@@ -3,13 +3,24 @@ from requests.auth import HTTPBasicAuth
 import json
 import datetime
 
+URL='http://ec2-52-208-203-88.eu-west-1.compute.amazonaws.com/api/v1.0/readings'
+USER='dawsonm'
+PASSWORD='Lf0oTS4M'
 
-url='http://localhost:5000/api/v1.0/readings'
-payload={}
-payload['dlog']=str(datetime.datetime.now())
-payload['temp']='81'
-json=json.dumps(payload)
+def main():
+     r=post_temp('77')
+     print r
+     print r.text
 
-r=requests.post(url, json=json, auth=('dawsonm','Lf0oTS4M'))
+def post_temp(temp):
+    '''Post temperature data to ec2'''
+    payload={}
+    payload['dlog']=str(datetime.datetime.now())
+    payload['temp']=temp
+    myjson=json.dumps(payload)
 
-print r
+    r=requests.post(URL, json=myjson, auth=(USER, PASSWORD))
+    return r
+ 
+if __name__ == '__main__':
+    main()
