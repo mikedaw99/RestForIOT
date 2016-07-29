@@ -5,6 +5,11 @@ import json
 import sqlite3
 import datetime
 
+#*********************************************************************************************
+# See documentation at:-                                                                     *
+# http://www.datasciencebytes.com/bytes/2015/02/24/running-a-flask-app-on-aws-ec2/           *
+#*********************************************************************************************
+
 app = Flask(__name__, static_url_path = "")
 auth = HTTPBasicAuth()
 
