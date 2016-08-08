@@ -1,15 +1,22 @@
 #!flask/bin/python
+
 import json
 import sqlite3
-import datetime
-from flask import Flask, jsonify, abort, request, make_response, url_for, render_template
+#import datetime type
+from datetime import datetime
+#import timedelta type
+from datetime import timedelta
+from flask import Flask, jsonify, abort, request
+from flask import make_response, url_for, render_template
 from flask.ext.httpauth import HTTPBasicAuth
+import appconfig
 
 app = Flask(__name__, static_url_path="")
 auth = HTTPBasicAuth()
 
-DB_FILE = '/var/www/html/flaskapp/freezer.sqlite'
-# DB_FILE='freezer.sqlite'
+#DB_FILE = '/var/www/html/flaskapp/freezer.sqlite'
+# DB_FILE = 'freezer.sqlite'
+DB_FILE = appconfig.DB_FILE
 
 
 @auth.get_password
@@ -41,12 +48,42 @@ def update_weather(datetime_logged, pressure, temperature):
     db = sqlite3.connect(DB_FILE)
     cursor = db.cursor()
     cursor.execute(
-        '''insert into weather(`datetime_logged`,`pressure`,`temperature`) VALUES(?,?,?)''',
+        '''insert into weather
+           (`datetime_logged`,`pressure`,`temperature`)
+            VALUES(?,?,?)''',
         (datetime_logged,
          pressure,
          temperature))
     db.commit()
     db.close()
+
+
+def scan_weather():
+    """
+    Scan weather for gif
+    """
+
+    from matplotlib.dates import date2num
+
+    x = []
+    y = []
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    # --------- date calculation -----------
+    today = datetime.today()
+    offset = timedelta(days=5)
+    five_days_ago = str(today - offset)
+    #parameters must be in a tuple
+    cursor.execute(
+                   """select * from weather where datetime_logged > ?""",
+                   (five_days_ago,)
+                   )
+    for row in cursor.fetchall():
+        id, date, mb, temp = row
+        date_dt = datetime.strptime(date, "%Y-%m-%d %H:%M:%S.%f")
+        x.append(date2num(date_dt))
+        y.append(mb)
+    return (x, y)
 
 
 @auth.error_handler
@@ -84,7 +121,7 @@ def create_reading():
     """
     post_data = request.get_json(force=True)
     # print post_data
-    if not post_data or not 'temp' in post_data:
+    if not post_data or 'temp' not in post_data:
         abort(400)
 
     post_dict = json.loads(post_data)
@@ -106,7 +143,7 @@ def create_weather():
     """
     post_data = request.get_json(force=True)
     # print post_data
-    if not post_data or not 'pressure' in post_data:
+    if not post_data or 'pressure'not in post_data:
         abort(400)
 
     post_dict = json.loads(post_data)
@@ -125,7 +162,7 @@ def hello_world():
     """
     Show Flask is working!
     """
-    return 'Hello EC2 from Flask ' + str(datetime.datetime.now())
+    return 'Hello EC2 from Flask ' + str(datetime.now())
 
 
 @app.route("/index")
@@ -150,14 +187,7 @@ def simple():
 
     fig = Figure()
     ax = fig.add_subplot(111)
-    x = []
-    y = []
-    now = datetime.datetime.now()
-    delta = datetime.timedelta(days=1)
-    for i in range(10):
-        x.append(now)
-        now += delta
-        y.append(random.randint(0, 1000))
+    x, y = scan_weather()
     ax.plot_date(x, y, '-')
     ax.xaxis.set_major_formatter(DateFormatter('%Y-%m-%d'))
     fig.autofmt_xdate()
